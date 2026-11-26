@@ -19,6 +19,8 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      DIRECT_URL: process.env.TEST_DATABASE_URL ?? "",
+      STORAGE_DRIVER: "local",
       SESSION_SECRET: process.env.SESSION_SECRET ?? "test-secret-test-secret-test-secret-123",
       SMTP_HOST: "",
     },

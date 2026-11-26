@@ -47,11 +47,50 @@ npm run build && <restart the service>
 Run `npm start` under a process manager (systemd, PM2, NSSM on Windows) behind an HTTPS reverse
 proxy. Set `STORAGE_DIR` to a persistent volume. This setup supports every feature as built.
 
-### Vercel
-The application builds on Vercel, but note:
-- **File storage**: Vercel's filesystem is ephemeral. Replace the three functions in `src/server/storage.ts` with an object store (Supabase Storage, S3, Azure Blob) before using attachments/logos on Vercel.
-- **Rate limiting** is in-memory per instance; on serverless use a shared store (e.g. Upstash Redis) in `src/server/auth/rate-limit.ts`. Account lockout is stored in the database and works everywhere.
-- Use a pooled Postgres connection string suitable for serverless.
+### Vercel + Supabase (dashboard only)
+The app is Vercel-ready: files go to a **private** Supabase Storage bucket (`STORAGE_DRIVER=supabase`),
+rate limits live in PostgreSQL, and the `vercel-build` script runs `prisma migrate deploy` before
+every build. Functions run in London (`lhr1`, see `vercel.json`), so create Supabase in London too.
+
+**A. Supabase** (Imperial EdTech's own organization)
+1. Create a project, region **West EU (London) — eu-west-2**. Save the database password.
+2. *Connect* (top bar) → **ORMs → Prisma**: copy the two strings.
+   - Transaction pooler (port 6543) → `DATABASE_URL`, ending in `?pgbouncer=true&connection_limit=1`
+   - Session pooler (port 5432) → `DIRECT_URL`
+3. *Project Settings → API*: copy the **Project URL** and the **service_role** secret key.
+   The private bucket `iprams-private` is created automatically on first upload (or create it yourself; it must not be public).
+
+**B. Vercel** (`imperial-ed-tech/purchase-request`)
+1. *Settings → Git*: connect the GitHub repo `imperialedtech/purchase-request`, production branch `main`.
+2. *Settings → Environment Variables* (Production + Preview), all marked **Sensitive** where offered:
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | Supabase transaction pooler string (`…:6543/postgres?pgbouncer=true&connection_limit=1`) |
+   | `DIRECT_URL` | Supabase session pooler string (`…:5432/postgres`) |
+   | `SESSION_SECRET` | 64 random hex characters |
+   | `APP_URL` | the production URL, e.g. `https://purchase-request.vercel.app` or your custom domain |
+   | `STORAGE_DRIVER` | `supabase` |
+   | `SUPABASE_URL` | Supabase Project URL |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role key |
+   | `SUPABASE_STORAGE_BUCKET` | `iprams-private` |
+   | `MAX_UPLOAD_MB` | `4` (Vercel caps request bodies at about 4.5 MB) |
+   | `SMTP_*` | optional, see the table above |
+
+3. *Deployments → Redeploy* (or push to `main`). The build applies migrations automatically.
+
+**C. Create the first administrator** (once, from your own PC — never paste the connection string into chat):
+```powershell
+cd iprams
+$env:DATABASE_URL="<DIRECT_URL value>"; $env:DIRECT_URL="<DIRECT_URL value>"; $env:APP_URL="<production URL>"; $env:ADMIN_EMAIL="you@imperialedtech.com"; $env:ADMIN_NAME="Your Name"
+npm run setup:admin
+```
+Open the printed activation link, set a password, then continue with ADMIN_GUIDE.md.
+
+**Notes**
+- Do not run `npm run db:seed` against this database.
+- Supabase's REST API is not used by the app; you may keep the `public` schema closed to the Data API (*Settings → API → Exposed schemas*) since only the server connects, via Postgres.
+- Back up with Supabase's daily backups (PITR on paid plans) plus a periodic `pg_dump` using `DIRECT_URL`; Storage objects are backed up separately (see section 7).
 
 ## 6. Security checklist
 - [ ] HTTPS only; `NODE_ENV=production` (secure cookies + HSTS are enabled automatically)

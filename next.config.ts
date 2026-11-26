@@ -13,6 +13,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   turbopack: { root: process.cwd() },
+  // the default logo is read from disk when rendering PR PDFs
+  outputFileTracingIncludes: { "/api/requests/[id]/pdf": ["./public/brand/**"] },
   serverExternalPackages: ["@react-pdf/renderer", "exceljs", "bcryptjs", "nodemailer"],
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },

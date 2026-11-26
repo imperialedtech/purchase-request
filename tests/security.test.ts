@@ -158,3 +158,13 @@ describe("authentication", () => {
     await expect(authenticate(db, email, "Correct-Horse-1")).rejects.toThrow("Invalid email or password");
   });
 });
+
+describe("rate limiting", () => {
+  it("blocks after the limit within a window and is shared through the database", async () => {
+    const { rateLimit } = await import("@/server/auth/rate-limit");
+    const key = `test:${crypto.randomUUID()}`;
+    const results = await Promise.all(Array.from({ length: 7 }, () => rateLimit(db, key, 5, 60_000)));
+    expect(results.filter((r) => r.allowed)).toHaveLength(5);
+    expect(results.filter((r) => !r.allowed).every((r) => r.retryAfterSec > 0)).toBe(true);
+  });
+});

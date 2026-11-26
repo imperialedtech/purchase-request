@@ -11,7 +11,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const actor = await getActor();
   if (!actor) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   if (!sameOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-  if (!rateLimit(`upload:${actor.id}`, 60, 10 * 60_000).allowed) return NextResponse.json({ error: "Too many uploads, try again later" }, { status: 429 });
+  if (!(await rateLimit(db, `upload:${actor.id}`, 60, 10 * 60_000)).allowed) return NextResponse.json({ error: "Too many uploads, try again later" }, { status: 429 });
   const { id } = await params;
   let key: string | null = null;
   try {

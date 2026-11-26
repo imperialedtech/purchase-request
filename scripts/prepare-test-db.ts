@@ -12,5 +12,5 @@ if (!url) throw new Error("TEST_DATABASE_URL is not set");
 if (url === process.env.DATABASE_URL) throw new Error("TEST_DATABASE_URL must differ from DATABASE_URL");
 execSync("npx prisma migrate deploy", {
   stdio: "inherit",
-  env: { ...process.env, DATABASE_URL: url, PRISMA_HIDE_UPDATE_MESSAGE: "1" },
+  env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url, PRISMA_HIDE_UPDATE_MESSAGE: "1" },
 });

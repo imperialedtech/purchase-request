@@ -17,6 +17,7 @@ export const ALLOWED_TYPES: Record<string, { ext: string[]; magic?: number[][] }
   "text/plain": { ext: ["txt"] },
 };
 
+// Vercel limits request bodies to ~4.5 MB, so set MAX_UPLOAD_MB=4 there.
 export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB ?? 10) * 1024 * 1024;
 export const MAX_ATTACHMENTS = 20;
 

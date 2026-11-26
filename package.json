@@ -15,7 +15,8 @@
     "db:reset": "prisma migrate reset",
     "setup:admin": "tsx prisma/setup-admin.ts",
     "test": "tsx scripts/prepare-test-db.ts && vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

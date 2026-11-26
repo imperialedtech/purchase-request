@@ -17,7 +17,7 @@
 | PDF: submitted and approved PR documents (A4, company form structure, real records only) | Done — verified visually |
 | Reports (11 types, 7 filters, per-currency totals) + CSV / Excel / PDF export | Done — exports verified |
 | Administration: users, departments, categories, workflows, entities (+logo), roles, audit log, settings | Done |
-| Tests: 49 integration tests; typecheck, lint and production build clean | Done |
+| Tests: 50 integration tests; typecheck, lint and production build clean | Done |
 
 ## Not implemented / limitations
 - **Delegation rules** (automatic out-of-office delegation) are not implemented; use *Reassign approver*.
@@ -25,7 +25,7 @@
 - **Currency conversion** is intentionally not implemented; totals are always per currency.
 - **Certified e-signatures** are not integrated; approvals are internal authenticated records (stated on the PDF).
 - **Revision comparison**: every submitted version is stored and listed with its totals; there is no side-by-side diff view yet.
-- **Storage** uses a local directory and **rate limiting** is in-memory — fine for a single internal server; swap both for shared services before serverless/multi-instance hosting (see DEPLOYMENT.md).
+- **Storage** supports a local directory or a private Supabase Storage bucket; rate limits are stored in PostgreSQL, so both work on Vercel.
 - **PAVE**: no PAVE-specific form fields, roles or workflow exist by design, pending its actual template.
 - **Automated browser (E2E) tests** are not included; UI flows were verified manually in a browser.
 

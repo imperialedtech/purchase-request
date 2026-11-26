@@ -19,8 +19,8 @@ export async function loginAction(_: ActionResult | null, fd: FormData): Promise
   const email = String(fd.get("email") ?? "").trim().toLowerCase().slice(0, 254);
   const password = String(fd.get("password") ?? "").slice(0, 200);
   const { ip } = await clientMeta();
-  const a = rateLimit(`login:ip:${ip}`, 30, 15 * 60_000);
-  const b = rateLimit(`login:acct:${ip}:${email}`, 10, 15 * 60_000);
+  const a = await rateLimit(db, `login:ip:${ip}`, 30, 15 * 60_000);
+  const b = await rateLimit(db, `login:acct:${ip}:${email}`, 10, 15 * 60_000);
   if (!a.allowed || !b.allowed) return { ok: false, error: `Too many sign-in attempts. Try again in ${Math.ceil(Math.max(a.retryAfterSec, b.retryAfterSec) / 60)} minutes.` };
   if (!email || !password) return { ok: false, error: "Enter your email and password" };
   let userId: string;
@@ -42,7 +42,7 @@ export async function logoutAction() {
 
 export async function setPasswordAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   const { ip } = await clientMeta();
-  if (!rateLimit(`invite:${ip}`, 20, 15 * 60_000).allowed) return { ok: false, error: "Too many attempts. Try again later." };
+  if (!(await rateLimit(db, `invite:${ip}`, 20, 15 * 60_000)).allowed) return { ok: false, error: "Too many attempts. Try again later." };
   const token = String(fd.get("token") ?? "");
   const password = String(fd.get("password") ?? "");
   if (password !== String(fd.get("confirm") ?? "")) return { ok: false, error: "Passwords do not match", fieldErrors: { confirm: "Passwords do not match" } };

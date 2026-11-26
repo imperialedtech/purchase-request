@@ -16,7 +16,7 @@ three-level approval process, with architectural support for a second entity (PA
 | Server logic | Service layer in `src/server/services/*`, called from Server Actions and Route Handlers | All business rules and authorization run on the server and are unit-testable without HTTP |
 | Database | PostgreSQL 16 via Prisma 6 | Relational schema, transactions, row locks, constraints and triggers |
 | Auth | Built-in: bcrypt passwords, server-side sessions (random token, HMAC-hashed in DB, httpOnly cookie), admin invitations, lockout & rate limiting | Works on internal hosting with no external identity provider |
-| Files | Private storage directory outside the web root, served only through authorized routes | Swappable for S3/Supabase Storage (3 functions in `src/server/storage.ts`) |
+| Files | Private local directory or private Supabase Storage bucket, served only through authorized routes | `STORAGE_DRIVER=local` for a single server, `supabase` for Vercel |
 | PDF | `@react-pdf/renderer` (server-side) | A4 documents from the actual records |
 | Email | Nodemailer over SMTP (optional) | Configured through environment variables only |
 
@@ -65,6 +65,7 @@ npm run dev                       # http://localhost:3000
 Minimum `.env` for development:
 ```
 DATABASE_URL="postgresql://iprams:iprams_dev_password@localhost:5434/iprams?schema=public"
+DIRECT_URL="postgresql://iprams:iprams_dev_password@localhost:5434/iprams?schema=public"
 TEST_DATABASE_URL="postgresql://iprams:iprams_dev_password@localhost:5434/iprams_test?schema=public"
 APP_URL="http://localhost:3000"
 SESSION_SECRET="<64 random hex chars>"

@@ -7,7 +7,7 @@ To start from a clean test database, drop it manually (e.g. `DROP DATABASE ipram
 recreated on the next run. Never point `TEST_DATABASE_URL` at production; the script refuses to run
 if it equals `DATABASE_URL`.
 
-## Coverage (49 tests)
+## Coverage (50 tests)
 
 **PR (tests/requests.test.ts)** — decimal line/PR totals; totals kept per currency; create draft with
 initiator from the authenticated profile; edit draft with server-side recalculation (client-supplied
