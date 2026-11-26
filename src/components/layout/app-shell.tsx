@@ -7,7 +7,9 @@ import { useState } from "react";
 import {
   Bell,
   BarChart3,
+  ChevronDown,
   ClipboardCheck,
+  MessagesSquare,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -22,8 +24,8 @@ import {
 import { cn, initials } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 
-const ICONS = { dashboard: LayoutDashboard, requests: FolderOpen, mine: FileText, approvals: ClipboardCheck, reports: BarChart3, notifications: Bell, admin: ShieldCheck, settings: Settings };
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number };
+const ICONS = { dashboard: LayoutDashboard, requests: FolderOpen, mine: FileText, approvals: ClipboardCheck, messages: MessagesSquare, reports: BarChart3, notifications: Bell, admin: ShieldCheck, settings: Settings };
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; badge?: number; children?: { href: string; label: string }[] };
 
 export function AppShell({
   nav,
@@ -42,6 +44,8 @@ export function AppShell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  // null = follow the current page (open while inside /admin); a click overrides it
+  const [adminOpen, setAdminOpen] = useState<boolean | null>(null);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
@@ -55,6 +59,42 @@ export function AppShell({
         {nav.map((n) => {
           const Icon = ICONS[n.icon];
           const active = isActive(n.href);
+          if (n.children?.length) {
+            const expanded = adminOpen ?? active;
+            return (
+              <div key={n.href}>
+                <button
+                  type="button"
+                  onClick={() => setAdminOpen(!expanded)}
+                  aria-expanded={expanded}
+                  className={cn("group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors", active ? "font-medium text-white" : "hover:bg-white/5 hover:text-white")}
+                >
+                  <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand-500" : "text-slate-500 group-hover:text-slate-800")} />
+                  <span className="flex-1 text-left">{n.label}</span>
+                  <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform", expanded && "rotate-180")} />
+                </button>
+                {expanded && (
+                  <ul className="mt-0.5 mb-1 ml-5 space-y-0.5 border-l border-white/10 pl-3">
+                    {n.children.map((c) => {
+                      const on = c.href === "/admin" ? pathname === "/admin" : pathname === c.href || pathname.startsWith(`${c.href}/`);
+                      return (
+                        <li key={c.href}>
+                          <Link
+                            href={c.href}
+                            aria-current={on ? "page" : undefined}
+                            onClick={() => setOpen(false)}
+                            className={cn("block rounded-md px-2.5 py-1.5 text-[13px] transition-colors", on ? "bg-brand-600/15 font-medium text-white ring-1 ring-brand-600/40 ring-inset" : "text-slate-500 hover:bg-white/5 hover:text-white")}
+                          >
+                            {c.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          }
           return (
             <Link
               key={n.href}

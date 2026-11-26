@@ -7,7 +7,7 @@ To start from a clean test database, drop it manually (e.g. `DROP DATABASE ipram
 recreated on the next run. Never point `TEST_DATABASE_URL` at production; the script refuses to run
 if it equals `DATABASE_URL`.
 
-## Coverage (50 tests)
+## Coverage (64 tests)
 
 **PR (tests/requests.test.ts)** — decimal line/PR totals; totals kept per currency; create draft with
 initiator from the authenticated profile; edit draft with server-side recalculation (client-supplied
@@ -32,6 +32,13 @@ approval records and audit logs cannot be updated/deleted (DB trigger); DB rejec
 totals and non-positive quantities; non-draft PR without number rejected; role permission checks;
 employees cannot run reports or create users; only system admins change role permissions; reports
 never mix currencies; login lockout and generic errors; deactivated users cannot sign in.
+
+**Chat & dashboard (tests/chat.test.ts)** — messages reach the requestor and the current approver with
+a link to the chat; role labels (Requestor / stage approver / job title); polling returns only newer
+messages; people without access (other employees, other entities) cannot read, post or list the
+conversation; anyone who joins is notified; unread counts clear when the chat is opened; empty
+messages rejected; dashboard KPIs (approved this month, value, turnaround, approval rate) and the
+per-stage pipeline.
 
 ## Manual / browser verification performed
 Sign-in; dashboard with live data and charts; 5-step form with auto-save, attachments (valid upload

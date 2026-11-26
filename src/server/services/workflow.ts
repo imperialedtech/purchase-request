@@ -502,7 +502,7 @@ export async function reassignTx(tx: Tx, actor: Actor, requestId: string, stageI
 export async function addCommentTx(tx: Tx, actor: Actor, requestId: string, body: string, visibleWhere: Prisma.PurchaseRequestWhereInput) {
   const text = body?.trim() ?? "";
   if (text.length < 1 || text.length > 4000) throw invalid("Comment must be between 1 and 4000 characters");
-  const pr = await tx.purchaseRequest.findFirst({ where: { AND: [{ id: requestId }, visibleWhere] }, include: { stages: true } });
+  const pr = await tx.purchaseRequest.findFirst({ where: { AND: [{ id: requestId }, visibleWhere] }, include: { stages: true, entity: { select: { allowSelfApproval: true } } } });
   if (!pr) throw notFound();
   if (pr.status === "DRAFT") throw invalid("Comments are available once the request is submitted");
   const kind = pr.status === "RETURNED" && pr.requesterId === actor.id ? "CLARIFICATION_RESPONSE" : "COMMENT";
@@ -517,16 +517,26 @@ export async function addCommentTx(tx: Tx, actor: Actor, requestId: string, body
     prNumber: pr.prNumber,
     summary: `Comment added to ${pr.prNumber}`,
   });
-  // notify the requester and everyone involved in the approval chain so far
+  // notify the requester, everyone in the approval chain so far, and anyone who has joined the conversation
   const recipients = new Set<string>([pr.requesterId]);
-  for (const s of pr.stages.filter((s) => s.state !== "WAITING")) for (const id of await stageApproverIds(tx, pr.entityId, s)) recipients.add(id);
+  const activeApprovers = new Set<string>();
+  for (const s of pr.stages.filter((s) => s.state !== "WAITING"))
+    for (const id of await stageApproverIds(tx, pr.entityId, s)) {
+      recipients.add(id);
+      if (s.state === "ACTIVE" && (id !== pr.requesterId || pr.entity.allowSelfApproval)) activeApprovers.add(id);
+    }
+  const participants = await tx.purchaseRequestComment.findMany({ where: { requestId }, select: { authorId: true }, distinct: ["authorId"] });
+  for (const p of participants) recipients.add(p.authorId);
   recipients.delete(actor.id);
   return notify(tx, {
     userIds: [...recipients],
     type: "COMMENT_ADDED",
-    title: `New comment on ${pr.prNumber}`,
+    title: `New message on ${pr.prNumber} from ${actor.name}`,
     body: `${actor.name}: ${text.slice(0, 200)}`,
     requestId: pr.id,
+    linkHash: "chat",
+    emailLines: [["PR number", pr.prNumber ?? ""], ["Request", pr.title], ["From", actor.name], ["Message", text.slice(0, 1500)]],
+    quickApproveFor: [...activeApprovers],
   });
 }
 

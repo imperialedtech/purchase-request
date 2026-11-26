@@ -44,6 +44,20 @@ You cannot approve a request you raised yourself, and you can only act when the 
 stage. Your decision is recorded with your name, role, date and time; it cannot be changed afterwards.
 These are internal approval records, not certified electronic signatures.
 
+## Discussion (chat) and Messages
+Every submitted request has a **Discussion** panel. The requestor, the approvers and anyone else who
+can see the request can chat there; new messages appear within a few seconds without reloading.
+Press Enter to send, Shift+Enter for a new line.
+
+Each message notifies the requestor, the approvers involved so far and everyone who has joined the
+conversation, in the app and (if email is enabled) by email. The email shows the message and a
+**Reply in chat** button. If you are the approver at the current stage it also has a **Review &
+approve** button: it opens the request (after you sign in) with the Approve confirmation ready, so
+you approve with one more click. Nothing is approved from the email alone. Replying to the email
+itself does not post into the chat.
+
+*Messages* in the sidebar lists every conversation you can see, newest first, with unread counts.
+
 ## Notifications
 The bell shows unread notifications. Click one to open the request; use *Mark all as read* to clear
 them. If email is enabled you also receive an email for each notification.

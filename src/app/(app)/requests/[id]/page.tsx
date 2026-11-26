@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Circle, Clock, Download, FileText, Lock, MessageSquare, Paperclip, Pencil, RotateCcw, Send, XCircle, Ban, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Download, FileText, Lock, Paperclip, Pencil, RotateCcw, Send, XCircle, Ban, AlertCircle } from "lucide-react";
 import { requireActor } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { getRequestForActor } from "@/server/services/requests";
 import { AppError } from "@/server/errors";
 import { Alert, Badge, Card, CardHeader, LinkButton, StatusBadge, Table, Td, Th } from "@/components/ui";
-import { ApprovalPanel, CancelRequestButton, CommentBox, ReassignForm } from "@/components/requests/actions";
+import { ApprovalPanel, CancelRequestButton, ReassignForm } from "@/components/requests/actions";
+import { RequestChat } from "@/components/requests/chat";
+import { listMessages } from "@/server/services/chat";
+import { emailConfigured } from "@/server/email";
 import { formatMoney, totalsByCurrency } from "@/lib/money";
 import { DECISION_LABEL, STATUS_LABEL, type PRStatusKey } from "@/lib/status";
 import { cn, fmtDate, fmtDateTime } from "@/lib/utils";
@@ -15,9 +18,10 @@ export const metadata = { title: "Purchase request" };
 
 type TimelineEvent = { at: Date; kind: "submitted" | "resubmitted" | "approved" | "rejected" | "returned" | "cancelled"; title: string; who: string; role?: string; comment?: string | null; stage?: string };
 
-export default async function RequestDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ submitted?: string }> }) {
+export default async function RequestDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ submitted?: string; decide?: string }> }) {
   const { id } = await params;
-  const justSubmitted = (await searchParams).submitted === "1";
+  const sp = await searchParams;
+  const justSubmitted = sp.submitted === "1";
   const actor = await requireActor();
   let data;
   try {
@@ -46,7 +50,7 @@ export default async function RequestDetailPage({ params, searchParams }: { para
   if (pr.cancelledAt) events.push({ at: pr.cancelledAt, kind: "cancelled", title: "Cancelled", who: "", comment: pr.cancelReason });
   events.sort((a, b) => a.at.getTime() - b.at.getTime());
 
-  const [activity, approverOptions] = await Promise.all([
+  const [activity, approverOptions, messages] = await Promise.all([
     db.auditLog.findMany({ where: { requestId: pr.id }, orderBy: { createdAt: "desc" }, take: 50, select: { id: true, actorName: true, summary: true, createdAt: true, action: true } }),
     caps.canReassign
       ? db.user.findMany({
@@ -60,6 +64,7 @@ export default async function RequestDetailPage({ params, searchParams }: { para
           orderBy: { name: "asc" },
         })
       : Promise.resolve([]),
+    listMessages(db, actor, pr.id),
   ]);
   const cancelledBy = pr.cancelledById ? await db.user.findUnique({ where: { id: pr.cancelledById }, select: { name: true } }) : null;
   if (pr.cancelledAt) events.find((e) => e.kind === "cancelled")!.who = cancelledBy?.name ?? "";
@@ -128,7 +133,7 @@ export default async function RequestDetailPage({ params, searchParams }: { para
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-6">
-          {caps.canAct && activeStage && <ApprovalPanel requestId={pr.id} stageName={activeStage.name} requireComment={activeStage.requireCommentOnApprove} />}
+          {caps.canAct && activeStage && <ApprovalPanel requestId={pr.id} stageName={activeStage.name} requireComment={activeStage.requireCommentOnApprove} quickApprove={sp.decide === "approve"} />}
           {caps.selfApprovalBlocked && <Alert tone="amber">You raised this request, so you cannot approve it. An administrator can reassign this stage.</Alert>}
 
           <Card>
@@ -230,24 +235,15 @@ export default async function RequestDetailPage({ params, searchParams }: { para
             )}
           </Card>
 
-          <Card>
-            <CardHeader title="Comments & clarification" />
-            <div className="space-y-4 p-5">
-              {pr.comments_.length === 0 && <p className="text-sm text-slate-500">No comments yet.</p>}
-              {pr.comments_.map((c) => (
-                <div key={c.id} className="flex gap-3">
-                  <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-slate-500">
-                      <span className="font-medium text-slate-800">{c.authorName}</span> · {fmtDateTime(c.createdAt)}
-                      {c.kind === "CLARIFICATION_RESPONSE" && <Badge tone="orange" className="ml-2">Clarification response</Badge>}
-                    </p>
-                    <p className="mt-1 text-sm whitespace-pre-wrap text-slate-800">{c.body}</p>
-                  </div>
-                </div>
-              ))}
-              {caps.canComment && <CommentBox requestId={pr.id} placeholder={pr.status === "RETURNED" && caps.canEdit ? "Respond to the clarification request…" : undefined} />}
-            </div>
+          <Card id="chat" className="scroll-mt-24 overflow-hidden">
+            <RequestChat
+              requestId={pr.id}
+              meId={actor.id}
+              initial={messages}
+              canPost={caps.canComment}
+              emailEnabled={emailConfigured()}
+              placeholder={pr.status === "RETURNED" && caps.canEdit ? "Respond to the clarification request…" : undefined}
+            />
           </Card>
         </div>
 

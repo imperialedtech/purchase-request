@@ -1,20 +1,26 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, MessageSquareWarning, XCircle, Ban, UserCog } from "lucide-react";
 import { Alert, Button, Field, Select, Textarea, buttonClass } from "@/components/ui";
-import { cancelAction, commentAction, decideAction, reassignAction } from "@/app/actions/requests";
+import { cancelAction, decideAction, reassignAction } from "@/app/actions/requests";
 
 type Decision = "APPROVED" | "REJECTED" | "CLARIFICATION_REQUESTED";
 
-export function ApprovalPanel({ requestId, stageName, requireComment }: { requestId: string; stageName: string; requireComment: boolean }) {
+export function ApprovalPanel({ requestId, stageName, requireComment, quickApprove }: { requestId: string; stageName: string; requireComment: boolean; quickApprove?: boolean }) {
   const router = useRouter();
   const [comment, setComment] = useState("");
-  const [decision, setDecision] = useState<Decision | null>(null);
+  const [decision, setDecision] = useState<Decision | null>(quickApprove ? "APPROVED" : null);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
   const dialog = useRef<HTMLDialogElement>(null);
+
+  // Arriving from the "Review & approve" email button: open the Approve confirmation straight away.
+  // The approver still confirms here, signed in, so a link scanner opening the email can't approve.
+  useEffect(() => {
+    if (quickApprove && dialog.current && !dialog.current.open) dialog.current.showModal();
+  }, [quickApprove]);
 
   const needsComment = decision === "REJECTED" || decision === "CLARIFICATION_REQUESTED" || (decision === "APPROVED" && requireComment);
   const labels: Record<Decision, string> = { APPROVED: "Approve", REJECTED: "Reject", CLARIFICATION_REQUESTED: "Request clarification" };
@@ -43,7 +49,7 @@ export function ApprovalPanel({ requestId, stageName, requireComment }: { reques
   }
 
   return (
-    <div className="rounded-lg border border-brand-200 bg-brand-50/60 p-4">
+    <div id="approve" className="scroll-mt-24 rounded-lg border border-brand-200 bg-brand-50/60 p-4">
       <p className="text-sm font-semibold text-slate-900">Your decision is required</p>
       <p className="mt-0.5 text-xs text-slate-600">You are the {stageName} approver for this request.</p>
       {result?.ok && <Alert tone="green" className="mt-3">{result.text}</Alert>}
@@ -126,37 +132,6 @@ export function CancelRequestButton({ requestId }: { requestId: string }) {
         </div>
       </dialog>
     </>
-  );
-}
-
-export function CommentBox({ requestId, placeholder }: { requestId: string; placeholder?: string }) {
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  return (
-    <form
-      className="space-y-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        start(async () => {
-          const r = await commentAction(requestId, body);
-          if (r.ok) {
-            setBody("");
-            setError(null);
-            router.refresh();
-          } else setError(r.error);
-        });
-      }}
-    >
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder={placeholder ?? "Add a comment…"} maxLength={4000} aria-label="Comment" />
-      <div className="flex justify-end">
-        <Button size="sm" type="submit" disabled={pending || !body.trim()}>
-          {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Post comment
-        </Button>
-      </div>
-    </form>
   );
 }
 

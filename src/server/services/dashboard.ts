@@ -15,7 +15,7 @@ export async function getDashboard(db: DB, actor: Actor) {
   since.setMonth(since.getMonth() - 11, 1);
   since.setHours(0, 0, 0, 0);
 
-  const [byStatus, awaitingCount, awaiting, recent, mine, activity, notifications, valueItems, trendRows] = await Promise.all([
+  const [byStatus, awaitingCount, awaiting, recent, mine, activity, notifications, valueItems, trendRows, activeStages, stageApprovals] = await Promise.all([
     db.purchaseRequest.groupBy({ by: ["status"], where: visible, _count: { _all: true } }),
     db.purchaseRequest.count({ where: awaitingMyApprovalWhere(actor) }),
     db.purchaseRequest.findMany({
@@ -61,7 +61,17 @@ export async function getDashboard(db: DB, actor: Actor) {
     }),
     db.purchaseRequest.findMany({
       where: { AND: [visible, { submittedAt: { gte: since } }] },
-      select: { submittedAt: true, status: true },
+      select: { submittedAt: true, status: true, finalApprovedAt: true },
+    }),
+    db.purchaseRequestStage.groupBy({
+      by: ["stageOrder", "name"],
+      where: { state: "ACTIVE", request: visible },
+      _count: { _all: true },
+      orderBy: { stageOrder: "asc" },
+    }),
+    db.purchaseRequestApproval.findMany({
+      where: { request: visible, decision: "APPROVED", createdAt: { gte: since } },
+      select: { stageOrder: true, stageName: true, createdAt: true, stage: { select: { activatedAt: true } } },
     }),
   ]);
 
@@ -82,10 +92,16 @@ export async function getDashboard(db: DB, actor: Actor) {
     } else add(pendingValue, it.currency, it.lineTotal.toString());
   }
 
-  const months: { key: string; label: string; submitted: number; approved: number; rejected: number }[] = [];
+  // The currency most line items use is the one KPI cards and value charts are drawn in;
+  // other currencies are never converted or added to it.
+  const currencyCount: Record<string, number> = {};
+  for (const it of valueItems) currencyCount[it.currency] = (currencyCount[it.currency] ?? 0) + 1;
+  const primaryCurrency = Object.entries(currencyCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "NGN";
+
+  const months: { key: string; label: string; submitted: number; approved: number; rejected: number; value: number; days: number[]; avgDays: number | null }[] = [];
   for (let i = 0; i < 12; i++) {
     const d = new Date(since.getFullYear(), since.getMonth() + i, 1);
-    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString("en-GB", { month: "short", year: "2-digit" }), submitted: 0, approved: 0, rejected: 0 });
+    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString("en-GB", { month: "short", year: "2-digit" }), submitted: 0, approved: 0, rejected: 0, value: 0, days: [], avgDays: null });
   }
   for (const r of trendRows) {
     const d = r.submittedAt!;
@@ -95,6 +111,39 @@ export async function getDashboard(db: DB, actor: Actor) {
     if (r.status === "APPROVED") m.approved++;
     if (r.status === "REJECTED") m.rejected++;
   }
+  const monthOf = (d: Date) => months.find((x) => x.key === `${d.getFullYear()}-${d.getMonth()}`);
+  for (const r of trendRows) {
+    if (r.status !== "APPROVED" || !r.finalApprovedAt || !r.submittedAt) continue;
+    monthOf(r.finalApprovedAt)?.days.push((r.finalApprovedAt.getTime() - r.submittedAt.getTime()) / 86_400_000);
+  }
+  for (const it of valueItems) {
+    if (it.request.status !== "APPROVED" || it.currency !== primaryCurrency || !it.request.finalApprovedAt) continue;
+    const m = monthOf(it.request.finalApprovedAt);
+    if (m) m.value += Number(it.lineTotal.toString());
+  }
+  for (const m of months) m.avgDays = m.days.length ? m.days.reduce((a, b) => a + b, 0) / m.days.length : null;
+
+  const allDays = months.flatMap((m) => m.days);
+  const decided = months.reduce((a, m) => a + m.approved + m.rejected, 0);
+  const approvedInYear = months.reduce((a, m) => a + m.approved, 0);
+  const [prev, cur] = months.slice(-2);
+  const change = (a: number, b: number) => (b === 0 ? (a === 0 ? 0 : null) : ((a - b) / b) * 100);
+
+  // per approval stage: requests waiting now, and how long approvals there took (hours)
+  const stageMap = new Map<number, { order: number; name: string; waiting: number; hours: number[] }>();
+  for (const s of activeStages) {
+    const e = stageMap.get(s.stageOrder) ?? { order: s.stageOrder, name: s.name, waiting: 0, hours: [] };
+    e.waiting += s._count._all;
+    stageMap.set(s.stageOrder, e);
+  }
+  for (const a of stageApprovals) {
+    const e = stageMap.get(a.stageOrder) ?? { order: a.stageOrder, name: a.stageName, waiting: 0, hours: [] };
+    if (a.stage.activatedAt && a.createdAt >= a.stage.activatedAt) e.hours.push((a.createdAt.getTime() - a.stage.activatedAt.getTime()) / 3_600_000);
+    stageMap.set(a.stageOrder, e);
+  }
+  const stages = [...stageMap.values()]
+    .sort((a, b) => a.order - b.order)
+    .map((s) => ({ order: s.order, name: s.name, waiting: s.waiting, avgHours: s.hours.length ? s.hours.reduce((x, y) => x + y, 0) / s.hours.length : null, decided: s.hours.length }));
 
   const dim = (m: Record<string, Record<string, Decimal>>) =>
     Object.entries(m)
@@ -120,7 +169,22 @@ export async function getDashboard(db: DB, actor: Actor) {
       pendingValue: fix(pendingValue),
     },
     statusBreakdown: byStatus.map((b) => ({ status: b.status, count: b._count._all })),
-    months,
+    months: months.map((m) => ({ key: m.key, label: m.label, submitted: m.submitted, approved: m.approved, rejected: m.rejected, value: m.value, avgDays: m.avgDays })),
+    primaryCurrency,
+    kpis: {
+      submittedThisMonth: cur.submitted,
+      submittedChange: change(cur.submitted, prev.submitted),
+      approvedThisMonth: cur.approved,
+      approvedChange: change(cur.approved, prev.approved),
+      valueThisMonth: cur.value,
+      valueChange: change(cur.value, prev.value),
+      avgDays: allDays.length ? allDays.reduce((a, b) => a + b, 0) / allDays.length : null,
+      avgDaysThisMonth: cur.avgDays,
+      avgDaysPrevMonth: prev.avgDays,
+      approvalRate: decided ? (approvedInYear / decided) * 100 : null,
+      decided,
+    },
+    stages,
     byDepartment: dim(byDept),
     byCategory: dim(byCat),
     byEntity: dim(byEntity),
