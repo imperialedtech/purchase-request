@@ -1,0 +1,538 @@
+// IPRAMS — Internal Purchase Request & Approval Management System
+// PostgreSQL schema. Business-critical rules are enforced in the service layer
+// (src/server/services) and backed by database constraints/triggers added in
+// the SQL migrations (see prisma/migrations/*/migration.sql).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum PRStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_LEVEL1
+  PENDING_FINANCE
+  PENDING_FINAL
+  PENDING_APPROVAL // generic stage status for configurable (non-IET) workflows
+  RETURNED
+  REJECTED
+  APPROVED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  CLARIFICATION_REQUESTED
+}
+
+enum StageApproverType {
+  CATEGORY_APPROVER // Level 1 functional responsible, resolved from the PR category
+  ROLE // any active user holding the role within the entity
+  USER // one named user
+}
+
+enum StageState {
+  WAITING
+  ACTIVE
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum CurrencyMode {
+  SINGLE // all line items must share one currency
+  MULTI // line items may differ; totals are kept per currency, never summed together
+}
+
+enum ResubmitRule {
+  RETURNING_STAGE // resubmitted PR goes back to the stage that returned it
+  FIRST_STAGE // resubmitted PR restarts the approval sequence
+}
+
+enum TokenPurpose {
+  INVITE
+  PASSWORD_RESET
+}
+
+// ─────────────────────────────── Entities ───────────────────────────────
+
+model Entity {
+  id                String       @id @default(uuid()) @db.Uuid
+  code              String       @unique // e.g. IET, PAVE
+  name              String
+  legalName         String?
+  address           String?
+  logoKey           String?      // storage key of uploaded logo
+  prNumberFormat    String       @default("{CODE}-PR-{YEAR}-{SEQ}")
+  sequencePadding   Int          @default(4)
+  currencyMode      CurrencyMode @default(SINGLE)
+  defaultCurrency   String       @default("NGN")
+  allowedCurrencies String[]     @default(["NGN", "USD", "EUR", "GBP"])
+  allowSelfApproval Boolean      @default(false)
+  emailNotifications Boolean     @default(true)
+  pdfFooterText     String?
+  isActive          Boolean      @default(true)
+  isConfigured      Boolean      @default(false) // false until form/workflow is supplied (e.g. PAVE)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  departments Department[]
+  categories  Category[]
+  workflows   ApprovalWorkflow[]
+  members     UserEntity[]
+  roleGrants  UserRole[]
+  requests    PurchaseRequest[]
+  sequences   PrNumberSequence[]
+
+  @@map("entities")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  entityId  String   @db.Uuid
+  name      String
+  code      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entity   Entity            @relation(fields: [entityId], references: [id])
+  users    User[]
+  requests PurchaseRequest[]
+
+  @@unique([entityId, name])
+  @@map("departments")
+}
+
+model Category {
+  id               String   @id @default(uuid()) @db.Uuid
+  entityId         String   @db.Uuid
+  name             String
+  description      String?
+  level1ApproverId String?  @db.Uuid // functional responsible (e.g. Purchasing Officer, System Administrator)
+  level1Label      String?  // display label for the functional responsible, e.g. "Purchasing Officer"
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  entity         Entity            @relation(fields: [entityId], references: [id])
+  level1Approver User?             @relation("CategoryLevel1Approver", fields: [level1ApproverId], references: [id])
+  requests       PurchaseRequest[]
+
+  @@unique([entityId, name])
+  @@map("categories")
+}
+
+// ─────────────────────────────── Users & access ───────────────────────────────
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique
+  name               String
+  jobTitle           String?
+  phone              String?
+  departmentId       String?   @db.Uuid
+  passwordHash       String?
+  isActive           Boolean   @default(true)
+  canEditProfile     Boolean   @default(false) // allows editing own name/job title
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  passwordChangedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  department         Department?          @relation(fields: [departmentId], references: [id])
+  entities           UserEntity[]
+  roles              UserRole[]
+  sessions           Session[]
+  tokens             UserToken[]
+  requests           PurchaseRequest[]    @relation("Requester")
+  categoriesApproved Category[]           @relation("CategoryLevel1Approver")
+  assignedStages     PurchaseRequestStage[] @relation("StageAssignee")
+  notifications      Notification[]
+
+  @@map("users")
+}
+
+model UserEntity {
+  userId   String @db.Uuid
+  entityId String @db.Uuid
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity @relation(fields: [entityId], references: [id])
+
+  @@id([userId, entityId])
+  @@map("user_entities")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique // SYSTEM_ADMIN, EMPLOYEE, LEVEL1_APPROVER, FINANCE_MANAGER, CHIEF_OF_STAFF, FINANCE_VIEWER
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+  stages      ApprovalWorkflowStage[]
+  prStages    PurchaseRequestStage[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid()) @db.Uuid
+  key         String @unique
+  description String
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Role grant. entityId = null means the role applies in every entity the user belongs to.
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  entityId  String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role    @relation(fields: [roleId], references: [id])
+  entity Entity? @relation(fields: [entityId], references: [id])
+
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  tokenHash  String   @unique
+  userId     String   @db.Uuid
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model UserToken {
+  id        String       @id @default(uuid()) @db.Uuid
+  tokenHash String       @unique
+  userId    String       @db.Uuid
+  purpose   TokenPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_tokens")
+}
+
+// ─────────────────────────────── Workflow configuration ───────────────────────────────
+
+model ApprovalWorkflow {
+  id           String       @id @default(uuid()) @db.Uuid
+  entityId     String       @db.Uuid
+  name         String
+  isActive     Boolean      @default(true)
+  resubmitRule ResubmitRule @default(RETURNING_STAGE)
+  version      Int          @default(1)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  entity   Entity                  @relation(fields: [entityId], references: [id])
+  stages   ApprovalWorkflowStage[]
+  requests PurchaseRequest[]
+
+  @@index([entityId])
+  @@map("approval_workflows")
+}
+
+model ApprovalWorkflowStage {
+  id                      String            @id @default(uuid()) @db.Uuid
+  workflowId              String            @db.Uuid
+  stageOrder              Int
+  name                    String            // e.g. "Functional Responsible", "Finance Manager", "Chief of Staff"
+  statusKey               PRStatus          // status a PR holds while waiting at this stage
+  approverType            StageApproverType
+  roleId                  String?           @db.Uuid
+  userId                  String?           @db.Uuid
+  requireCommentOnApprove Boolean           @default(false)
+  escalationHours         Int?              // optional SLA; overdue items are flagged on dashboards
+
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  role     Role?            @relation(fields: [roleId], references: [id])
+
+  @@unique([workflowId, stageOrder])
+  @@map("approval_workflow_stages")
+}
+
+model PrNumberSequence {
+  entityId  String @db.Uuid
+  year      Int
+  lastValue Int    @default(0)
+
+  entity Entity @relation(fields: [entityId], references: [id])
+
+  @@id([entityId, year])
+  @@map("pr_number_sequences")
+}
+
+// ─────────────────────────────── Purchase requests ───────────────────────────────
+
+model PurchaseRequest {
+  id                    String       @id @default(uuid()) @db.Uuid
+  entityId              String       @db.Uuid
+  prNumber              String?      @unique
+  title                 String       // short summary shown in lists
+  requesterId           String       @db.Uuid
+  requesterName         String       // snapshot of initiator section
+  requesterJobTitle     String?
+  departmentId          String?      @db.Uuid
+  departmentName        String?
+  categoryId            String?      @db.Uuid
+  workflowId            String?      @db.Uuid
+  resubmitRule          ResubmitRule @default(RETURNING_STAGE)
+  comments              String       @default("") // purpose / business justification
+  paymentDetails        String?      // restricted: requester, assigned approvers, pr.view_payment_details
+  currency              String?      // single-currency PRs; null when items use several currencies
+  totalAmount           Decimal?     @db.Decimal(20, 2) // null when mixed currency
+  status                PRStatus     @default(DRAFT)
+  currentStageOrder     Int?
+  returnedFromStage     Int?
+  revision              Int          @default(0) // incremented on every (re)submission
+  requesterConfirmedAt  DateTime?
+  submittedAt           DateTime?
+  lastSubmittedAt       DateTime?
+  finalApprovedAt       DateTime?
+  finalApproverId       String?      @db.Uuid
+  finalApproverName     String?
+  rejectedAt            DateTime?
+  rejectionReason       String?
+  cancelledAt           DateTime?
+  cancelledById         String?      @db.Uuid
+  cancelReason          String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  entity      Entity                      @relation(fields: [entityId], references: [id])
+  requester   User                        @relation("Requester", fields: [requesterId], references: [id])
+  department  Department?                 @relation(fields: [departmentId], references: [id])
+  category    Category?                   @relation(fields: [categoryId], references: [id])
+  workflow    ApprovalWorkflow?           @relation(fields: [workflowId], references: [id])
+  items       PurchaseRequestItem[]
+  stages      PurchaseRequestStage[]
+  approvals   PurchaseRequestApproval[]
+  comments_   PurchaseRequestComment[]
+  attachments PurchaseRequestAttachment[]
+  revisions   PurchaseRequestRevision[]
+  notifications Notification[]
+
+  @@index([entityId, status])
+  @@index([requesterId])
+  @@index([departmentId])
+  @@index([categoryId])
+  @@index([submittedAt])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  requestId      String  @db.Uuid
+  lineNo         Int
+  description    String
+  specifications String?
+  quantity       Decimal @db.Decimal(14, 3)
+  currency       String
+  unitPrice      Decimal @db.Decimal(18, 2) // VAT inclusive
+  lineTotal      Decimal @db.Decimal(20, 2) // VAT inclusive, computed server-side
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, lineNo])
+  @@map("purchase_request_items")
+}
+
+/// Per-PR snapshot of the workflow taken at submission (approval assignments).
+/// Changing the workflow later never rewrites these rows.
+model PurchaseRequestStage {
+  id                      String            @id @default(uuid()) @db.Uuid
+  requestId               String            @db.Uuid
+  stageOrder              Int
+  name                    String
+  statusKey               PRStatus
+  approverType            StageApproverType
+  assignedUserId          String?           @db.Uuid
+  assignedRoleId          String?           @db.Uuid
+  state                   StageState        @default(WAITING)
+  requireCommentOnApprove Boolean           @default(false)
+  escalationHours         Int?
+  activatedAt             DateTime?
+  completedAt             DateTime?
+
+  request      PurchaseRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  assignedUser User?                     @relation("StageAssignee", fields: [assignedUserId], references: [id])
+  assignedRole Role?                     @relation(fields: [assignedRoleId], references: [id])
+  approvals    PurchaseRequestApproval[]
+
+  @@unique([requestId, stageOrder])
+  @@index([assignedUserId])
+  @@index([assignedRoleId, state])
+  @@map("approval_assignments")
+}
+
+/// Immutable digital approval record (UPDATE/DELETE blocked by DB trigger).
+model PurchaseRequestApproval {
+  id         String           @id @default(uuid()) @db.Uuid
+  requestId  String           @db.Uuid
+  stageId    String           @db.Uuid
+  stageOrder Int
+  stageName  String
+  decision   ApprovalDecision
+  comment    String?
+  actorId    String           @db.Uuid
+  actorName  String
+  actorRole  String           // role / capacity in which the action was taken
+  actorJobTitle String?
+  revision   Int
+  createdAt  DateTime         @default(now())
+
+  request PurchaseRequest      @relation(fields: [requestId], references: [id])
+  stage   PurchaseRequestStage @relation(fields: [stageId], references: [id])
+
+  @@index([requestId])
+  @@index([actorId])
+  @@map("purchase_request_approvals")
+}
+
+model PurchaseRequestComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  requestId String   @db.Uuid
+  authorId  String   @db.Uuid
+  authorName String
+  kind      String   @default("COMMENT") // COMMENT | CLARIFICATION_RESPONSE
+  body      String
+  createdAt DateTime @default(now())
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("purchase_request_comments")
+}
+
+/// Snapshot of the PR content at every (re)submission, so earlier values are retained.
+model PurchaseRequestRevision {
+  id          String   @id @default(uuid()) @db.Uuid
+  requestId   String   @db.Uuid
+  revision    Int
+  snapshot    Json
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, revision])
+  @@map("purchase_request_revisions")
+}
+
+model PurchaseRequestAttachment {
+  id           String    @id @default(uuid()) @db.Uuid
+  requestId    String    @db.Uuid
+  fileName     String
+  storageKey   String    @unique
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String    @db.Uuid
+  createdAt    DateTime  @default(now())
+  removedAt    DateTime?
+  removedById  String?   @db.Uuid
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("purchase_request_attachments")
+}
+
+// ─────────────────────────────── Notifications & audit ───────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  type      String
+  title     String
+  body      String
+  requestId String?   @db.Uuid
+  link      String?
+  readAt    DateTime?
+  emailedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request PurchaseRequest? @relation(fields: [requestId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+/// Append-only audit trail (UPDATE/DELETE blocked by DB trigger).
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorId      String?  @db.Uuid
+  actorName    String?
+  action       String   // e.g. PR_CREATED, PR_SUBMITTED, PR_APPROVED, USER_ROLE_CHANGED
+  targetType   String   // PurchaseRequest, User, Workflow, Entity, Category, ...
+  targetId     String?
+  entityId     String?  @db.Uuid // business entity (IET/PAVE) affected
+  requestId    String?  @db.Uuid
+  prNumber     String?
+  summary      String
+  before       Json?
+  after        Json?
+  metadata     Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([requestId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedById String?  @db.Uuid
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}

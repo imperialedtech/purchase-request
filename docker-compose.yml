@@ -1,0 +1,17 @@
+# Local PostgreSQL for development (host port 5434).
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: iprams-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iprams
+      POSTGRES_PASSWORD: iprams_dev_password
+      POSTGRES_DB: iprams
+    ports:
+      - "5434:5432"
+    volumes:
+      - iprams_pgdata:/var/lib/postgresql/data
+volumes:
+  iprams_pgdata:
+    external: true
