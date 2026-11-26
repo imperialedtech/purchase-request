@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Optimistic check only: redirects visitors without a session cookie to the login page.
 // Real authentication and authorization happen server-side on every page, action and route.
-const PUBLIC = ["/login", "/invite"];
+const PUBLIC = ["/login", "/invite", "/setup"];
 
 export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
