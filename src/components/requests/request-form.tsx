@@ -263,7 +263,7 @@ export function RequestForm({ entities, initiator, existing, maxUploadMb }: Requ
               onClick={() => goTo(i)}
               className={cn(
                 "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition",
-                i === step ? "bg-white font-medium text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:bg-white/60",
+                i === step ? "bg-surface font-medium text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:bg-surface",
               )}
               aria-current={i === step ? "step" : undefined}
             >
@@ -609,7 +609,7 @@ export function RequestForm({ entities, initiator, existing, maxUploadMb }: Requ
           )}
         </Card>
 
-        <div className="no-print sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <div className="no-print sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-surface/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
           <div className="flex items-center gap-2">
             {step > 0 && (
               <Button type="button" variant="secondary" onClick={() => goTo(step - 1)}>

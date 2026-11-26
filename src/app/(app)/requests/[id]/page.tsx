@@ -99,7 +99,7 @@ export default async function RequestDetailPage({ params, searchParams }: { para
             </LinkButton>
           )}
           {pr.status !== "DRAFT" && (
-            <a href={`/api/requests/${pr.id}/pdf`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+            <a href={`/api/requests/${pr.id}/pdf`} className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-surface px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
               <Download className="h-4 w-4" /> {pr.status === "APPROVED" ? "Approved PR (PDF)" : "PDF"}
             </a>
           )}

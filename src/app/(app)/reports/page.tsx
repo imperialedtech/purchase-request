@@ -49,7 +49,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             const p = new URLSearchParams(qs);
             p.set("type", k);
             return (
-              <Link key={k} href={`/reports?${p}`} className={cn("shrink-0 rounded-md px-3 py-2 text-sm whitespace-nowrap", k === type ? "bg-white font-medium text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:bg-white/70")}>
+              <Link key={k} href={`/reports?${p}`} className={cn("shrink-0 rounded-md px-3 py-2 text-sm whitespace-nowrap", k === type ? "bg-surface font-medium text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:bg-surface")}>
                 {REPORT_TYPES[k]}
               </Link>
             );

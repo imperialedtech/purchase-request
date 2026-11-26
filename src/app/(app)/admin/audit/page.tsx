@@ -36,7 +36,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         <form method="get" className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
           <Input name="q" defaultValue={sp.q} placeholder="Search summary or PR number" className="lg:col-span-2" aria-label="Search" />
           <Input name="actor" defaultValue={sp.actor} placeholder="Actor" aria-label="Actor" />
-          <select name="action" defaultValue={sp.action ?? ""} className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm" aria-label="Action">
+          <select name="action" defaultValue={sp.action ?? ""} className="h-9 rounded-md border border-slate-300 bg-surface px-3 text-sm" aria-label="Action">
             <option value="">All actions</option>
             {actions.map((a) => (
               <option key={a.action}>{a.action}</option>

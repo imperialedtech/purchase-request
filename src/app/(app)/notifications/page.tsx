@@ -22,10 +22,10 @@ export default async function NotificationsPage({ searchParams }: { searchParams
         title="Notifications"
         actions={
           <div className="flex gap-1 rounded-md bg-slate-100 p-1 text-xs">
-            <Link href="/notifications" className={sp.filter !== "unread" ? "rounded bg-white px-3 py-1 font-medium shadow-sm" : "px-3 py-1 text-slate-600"}>
+            <Link href="/notifications" className={sp.filter !== "unread" ? "rounded bg-surface px-3 py-1 font-medium shadow-sm" : "px-3 py-1 text-slate-600"}>
               All
             </Link>
-            <Link href="/notifications?filter=unread" className={sp.filter === "unread" ? "rounded bg-white px-3 py-1 font-medium shadow-sm" : "px-3 py-1 text-slate-600"}>
+            <Link href="/notifications?filter=unread" className={sp.filter === "unread" ? "rounded bg-surface px-3 py-1 font-medium shadow-sm" : "px-3 py-1 text-slate-600"}>
               Unread
             </Link>
           </div>

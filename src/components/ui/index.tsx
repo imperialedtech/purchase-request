@@ -6,13 +6,15 @@ import { STATUS_LABEL, STATUS_TONE, type PRStatusKey, type Tone } from "@/lib/st
 // ───────────── Buttons ─────────────
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "success" | "warning";
+// Filled buttons are red with white text. Approve (success) and clarify (warning) keep their
+// conventional colours so approvers can't confuse them with Reject.
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm",
-  secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 shadow-sm",
-  ghost: "text-slate-600 hover:bg-slate-100",
-  danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
-  success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
-  warning: "bg-amber-500 text-white hover:bg-amber-600 shadow-sm",
+  primary: "bg-[#dc2626] text-white hover:bg-[#b91c1c] shadow-sm",
+  secondary: "bg-surface text-slate-800 border border-slate-300 hover:bg-slate-100 hover:border-slate-400",
+  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+  danger: "bg-[#991b1b] text-white hover:bg-[#7f1d1d] shadow-sm",
+  success: "bg-[#15803d] text-white hover:bg-[#166534] shadow-sm",
+  warning: "bg-[#b45309] text-white hover:bg-[#92400e] shadow-sm",
 };
 const sizes = { sm: "h-8 px-3 text-xs", md: "h-9 px-4 text-sm", lg: "h-11 px-5 text-sm" };
 
@@ -40,7 +42,7 @@ export function LinkButton({ href, variant = "primary", size = "md", className, 
 // ───────────── Form controls ─────────────
 
 const control =
-  "w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-500 aria-[invalid=true]:border-red-400";
+  "w-full rounded-md border border-slate-300 bg-surface px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-500 aria-[invalid=true]:border-red-400";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...p }, ref) {
   return <input ref={ref} className={cn(control, "h-9", className)} {...p} />;
@@ -97,7 +99,7 @@ export function Checkbox({ label, className, ...p }: React.InputHTMLAttributes<H
 // ───────────── Surfaces ─────────────
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]", className)} {...p} />;
+  return <div className={cn("rounded-lg border border-slate-200 bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]", className)} {...p} />;
 }
 
 export function CardHeader({ title, description, actions, className }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; className?: string }) {

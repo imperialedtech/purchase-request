@@ -1,27 +1,108 @@
 @import "tailwindcss";
 
+/*
+ * Black theme with red accents.
+ * Components use semantic utility names (slate-*, brand-*, status colours); the scales are remapped
+ * here for a dark UI: the neutral "slate" scale runs from near-black (50) to near-white (900), and the
+ * status scales are inverted so that light tints become dark tints and dark text becomes light text.
+ */
+@theme inline {
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+
 @theme {
-  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --color-navy-950: #0a1530;
-  --color-navy-900: #0f1e3d;
-  --color-navy-800: #172a52;
-  --color-navy-700: #22396b;
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe6ff;
-  --color-brand-500: #3b6ef5;
-  --color-brand-600: #2557e0;
-  --color-brand-700: #1d46b8;
+  /* page / surfaces */
+  --color-canvas: #050505;
+  --color-surface: #101010;
+
+  /* sidebar (was navy) */
+  --color-navy-950: #000000;
+  --color-navy-900: #000000;
+  --color-navy-800: #141414;
+  --color-navy-700: #262626;
+
+  /* accent: red */
+  --color-brand-50: #2a0b0d;
+  --color-brand-100: #451013;
+  --color-brand-200: #7f1d1d;
+  --color-brand-500: #ef4444;
+  --color-brand-600: #dc2626;
+  --color-brand-700: #f87171; /* used for link text: light red on black */
+
+  /* neutral scale, inverted for dark backgrounds */
+  --color-slate-50: #161616;
+  --color-slate-100: #1d1d1d;
+  --color-slate-200: #2a2a2a;
+  --color-slate-300: #3a3a3a;
+  --color-slate-400: #707070;
+  --color-slate-500: #9c9c9c;
+  --color-slate-600: #b8b8b8;
+  --color-slate-700: #d4d4d4;
+  --color-slate-800: #e5e5e5;
+  --color-slate-900: #f5f5f5;
+  --color-slate-950: #fafafa;
+
+  /* status scales inverted (tint backgrounds dark, text light) */
+  --color-blue-50: #0b1630;
+  --color-blue-100: #10204a;
+  --color-blue-200: #1e3a8a;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #60a5fa;
+  --color-blue-700: #93c5fd;
+  --color-blue-800: #bfdbfe;
+  --color-blue-900: #dbeafe;
+
+  --color-violet-50: #1a1033;
+  --color-violet-100: #24164a;
+  --color-violet-200: #4c1d95;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #a78bfa;
+  --color-violet-700: #c4b5fd;
+
+  --color-amber-50: #261a05;
+  --color-amber-100: #3b2906;
+  --color-amber-200: #78350f;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #fbbf24;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+
+  --color-emerald-50: #06200f;
+  --color-emerald-100: #0a3019;
+  --color-emerald-200: #065f46;
+  --color-emerald-300: #10b981;
+  --color-emerald-500: #22c55e;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-900: #d1fae5;
+
+  --color-red-50: #2a0b0d;
+  --color-red-100: #451013;
+  --color-red-200: #7f1d1d;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-900: #fee2e2;
+
+  --color-orange-50: #2a1405;
+  --color-orange-100: #431d07;
+  --color-orange-200: #7c2d12;
+  --color-orange-500: #f97316;
+  --color-orange-700: #fdba74;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
 }
 
 body {
-  background: #f5f7fb;
-  color: #0f172a;
+  background: var(--color-canvas);
+  color: var(--color-slate-800);
   font-family: var(--font-sans);
-  font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+  accent-color: var(--color-brand-600);
 }
 
 :focus-visible {
@@ -29,8 +110,14 @@ body {
   outline-offset: 2px;
 }
 
+dialog {
+  background: var(--color-surface);
+  color: var(--color-slate-800);
+  border: 1px solid var(--color-slate-200);
+}
+
 dialog::backdrop {
-  background: rgb(15 23 42 / 0.45);
+  background: rgb(0 0 0 / 0.7);
 }
 
 @media print {

@@ -267,11 +267,11 @@ export function EntityEditor({ initial }: { initial: EntityForm }) {
           <div className="flex flex-wrap items-center gap-3 rounded-md bg-slate-50 p-3">
             {f.hasLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/api/entities/${f.id}/logo?v=${logoVersion}`} alt={`${f.name} logo`} className="h-10 max-w-[180px] rounded bg-white object-contain p-1 ring-1 ring-slate-200" />
+              <img src={`/api/entities/${f.id}/logo?v=${logoVersion}`} alt={`${f.name} logo`} className="h-10 max-w-[180px] rounded bg-surface object-contain p-1 ring-1 ring-slate-200" />
             ) : (
               <span className="text-xs text-slate-500">No logo uploaded{f.code === "IET" ? " — the default Imperial EdTech logo is used on PDFs" : ""}.</span>
             )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-surface px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
               <Upload className="h-3.5 w-3.5" /> Upload logo (PNG/JPG, max 1 MB)
               <input
                 type="file"
@@ -344,7 +344,7 @@ export function RoleMatrix({ roles, permissions, canEdit }: { roles: { id: strin
           <tbody>
             {permissions.map((p) => (
               <tr key={p.key} className="border-b border-slate-100">
-                <td className="sticky left-0 bg-white px-4 py-2.5">
+                <td className="sticky left-0 bg-surface px-4 py-2.5">
                   <p className="font-mono text-xs text-slate-900">{p.key}</p>
                   <p className="text-xs text-slate-500">{p.description}</p>
                 </td>
@@ -366,7 +366,7 @@ export function RoleMatrix({ roles, permissions, canEdit }: { roles: { id: strin
           {canEdit && (
             <tfoot>
               <tr>
-                <td className="sticky left-0 bg-white px-4 py-3 text-xs text-slate-500">Save changes per role</td>
+                <td className="sticky left-0 bg-surface px-4 py-3 text-xs text-slate-500">Save changes per role</td>
                 {roles.map((r) => (
                   <td key={r.id} className="px-2 py-3 text-center">
                     <Button size="sm" variant="secondary" disabled={pending} onClick={() => run(() => setRolePermissionsAction(r.id, [...state[r.id]!]))}>

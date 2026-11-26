@@ -46,7 +46,7 @@ export function AppShell({
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-navy-900 text-slate-300">
+    <div className="flex h-full flex-col border-r border-slate-200 bg-navy-900 text-slate-700">
       <div className="flex h-16 items-center gap-3 border-b border-white/5 px-5">
         <Image src="/brand/iet-logo-white.png" alt="Imperial EdTech" width={140} height={26} className="h-6 w-auto" priority />
       </div>
@@ -66,7 +66,7 @@ export function AppShell({
                 active ? "bg-white/10 font-medium text-white" : "hover:bg-white/5 hover:text-white",
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand-500" : "text-slate-400 group-hover:text-slate-200")} />
+              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand-500" : "text-slate-500 group-hover:text-slate-800")} />
               <span className="flex-1">{n.label}</span>
               {!!n.badge && <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">{n.badge > 99 ? "99+" : n.badge}</span>}
             </Link>
@@ -78,10 +78,10 @@ export function AppShell({
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-700 text-xs font-semibold text-white">{initials(user.name)}</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-white">{user.name}</p>
-            <p className="truncate text-[11px] text-slate-400">{user.jobTitle ?? user.email}</p>
+            <p className="truncate text-[11px] text-slate-500">{user.jobTitle ?? user.email}</p>
           </div>
           <form action={logoutAction}>
-            <button type="submit" className="rounded p-1.5 text-slate-400 hover:bg-white/5 hover:text-white" title="Sign out" aria-label="Sign out">
+            <button type="submit" className="rounded p-1.5 text-slate-500 hover:bg-white/5 hover:text-white" title="Sign out" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </button>
           </form>
@@ -95,15 +95,15 @@ export function AppShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 lg:block">{sidebar}</aside>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setOpen(false)} />
+          <div className="absolute inset-0 bg-black/70" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-64 shadow-xl">{sidebar}</aside>
-          <button className="absolute top-4 left-[16.5rem] rounded-md bg-white p-1.5 text-slate-700" onClick={() => setOpen(false)} aria-label="Close menu">
+          <button className="absolute top-4 left-[16.5rem] rounded-md bg-surface p-1.5 text-slate-700" onClick={() => setOpen(false)} aria-label="Close menu">
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
       <div className="lg:pl-60">
-        <header className="no-print sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="no-print sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-surface/90 px-4 backdrop-blur sm:px-6">
           <button className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>
@@ -115,18 +115,18 @@ export function AppShell({
             }}
             role="search"
           >
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search PR number, requestor, item…"
               aria-label="Search purchase requests"
-              className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 pr-3 pl-9 text-sm placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
+              className="h-9 w-full rounded-md border border-slate-200 bg-slate-50 pr-3 pl-9 text-sm placeholder:text-slate-500 focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </form>
           <div className="ml-auto flex items-center gap-2">
             {canCreate && (
-              <Link href="/requests/new" className="hidden h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-700 sm:inline-flex">
+              <Link href="/requests/new" className="hidden h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-[#b91c1c] sm:inline-flex">
                 <Plus className="h-4 w-4" /> New request
               </Link>
             )}

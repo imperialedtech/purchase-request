@@ -79,7 +79,7 @@ export function UserEditor({ user, entities, departments, roles, isSelf }: UserE
         {link && (
           <Alert tone="blue" title={link.emailed ? "Activation email sent. You can also copy the link:" : "Email is not configured — copy this one-time link and send it to the user securely:"}>
             <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-xs">{link.link}</code>
+              <code className="min-w-0 flex-1 truncate rounded bg-surface px-2 py-1 text-xs">{link.link}</code>
               <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(link.link)}>
                 <Copy className="h-3.5 w-3.5" /> Copy
               </Button>
