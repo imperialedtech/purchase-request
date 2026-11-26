@@ -2,6 +2,7 @@ import type { DB, Tx } from "../db";
 import type { Actor } from "../auth/actor";
 import { conflict, forbidden, invalid, notFound } from "../errors";
 import { audit } from "./audit";
+import { maxUploadMb } from "../env";
 import { visibleRequestsWhere } from "./visibility";
 import { EDITABLE_STATUSES } from "./requests";
 
@@ -18,7 +19,7 @@ export const ALLOWED_TYPES: Record<string, { ext: string[]; magic?: number[][] }
 };
 
 // Vercel limits request bodies to ~4.5 MB, so set MAX_UPLOAD_MB=4 there.
-export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_MB ?? 10) * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = maxUploadMb() * 1024 * 1024;
 export const MAX_ATTACHMENTS = 20;
 
 export function sanitizeFileName(name: string) {

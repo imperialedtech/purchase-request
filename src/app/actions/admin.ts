@@ -6,6 +6,7 @@ import { requireActor } from "@/server/auth/session";
 import { toActionError, type ActionResult } from "@/server/errors";
 import * as admin from "@/server/services/admin";
 import { sendEmail } from "@/server/email";
+import { appUrl } from "@/server/env";
 
 function done<T>(data?: T, message?: string): ActionResult<T> {
   revalidatePath("/admin", "layout");
@@ -13,7 +14,7 @@ function done<T>(data?: T, message?: string): ActionResult<T> {
 }
 
 async function inviteDelivery(email: string, name: string, token: string, purpose: "INVITE" | "PASSWORD_RESET") {
-  const link = `${process.env.APP_URL ?? ""}/invite/${token}`;
+  const link = `${appUrl()}/invite/${token}`;
   let emailed = false;
   try {
     emailed = await sendEmail({

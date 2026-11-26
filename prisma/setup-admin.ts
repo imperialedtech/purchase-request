@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { bootstrap } from "./bootstrap";
 import { issueUserToken } from "../src/server/services/auth";
 import { audit } from "../src/server/services/audit";
+import { appUrl } from "../src/server/env";
 
 const db = new PrismaClient();
 
@@ -30,7 +31,7 @@ async function main() {
     await audit(db, { actor: null, action: "USER_CREATED", targetType: "User", targetId: user.id, summary: `Initial administrator ${email} created by setup script` });
   }
   const token = await issueUserToken(db, user.id, user.passwordHash ? "PASSWORD_RESET" : "INVITE", 72);
-  const base = process.env.APP_URL ?? "http://localhost:3000";
+  const base = appUrl();
   console.log(`\nAdministrator: ${email}\nActivation link (valid 72h, single use):\n${base}/invite/${token}\n`);
 }
 

@@ -1,5 +1,6 @@
 import type { DB } from "../db";
 import { emailConfigured, sendEmail } from "../email";
+import { appUrl } from "../env";
 
 export type NotifyInput = {
   userIds: string[];
@@ -63,7 +64,7 @@ export async function deliverEmails(rootDb: DB, notificationIds: string[]) {
     if (!r.user.isActive) continue;
     if (r.request && !r.request.entity.emailNotifications) continue;
     try {
-      const base = process.env.APP_URL ?? "";
+      const base = appUrl();
       await sendEmail({
         to: r.user.email,
         subject: `[IPRAMS] ${r.title}`,

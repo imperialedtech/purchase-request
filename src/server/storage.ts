@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { storageDriver, supabaseUrl } from "./env";
 
 // Private file storage. Files are only ever served through authorized route handlers with
 // `Content-Disposition` and `nosniff`, never executed or exposed publicly.
@@ -13,7 +14,7 @@ import { randomUUID } from "node:crypto";
 type Folder = "attachments" | "logos";
 
 function driver() {
-  return process.env.STORAGE_DRIVER === "supabase" ? "supabase" : "local";
+  return storageDriver();
 }
 
 function validKey(key: string) {
@@ -36,7 +37,7 @@ function localPath(key: string) {
 // ───────────── supabase ─────────────
 
 function sb() {
-  const url = process.env.SUPABASE_URL?.replace(/\/+$/, "");
+  const url = supabaseUrl();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "iprams-private";
   if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for STORAGE_DRIVER=supabase");

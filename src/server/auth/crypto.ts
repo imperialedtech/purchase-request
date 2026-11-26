@@ -1,13 +1,14 @@
 import { createHmac, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
+import { sessionSecret } from "../env";
 
 export function newToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
 function secret() {
-  const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 32) throw new Error("SESSION_SECRET must be set (min 32 characters)");
+  const s = sessionSecret();
+  if (!s || s.length < 32) throw new Error("SESSION_SECRET (or a linked Supabase store) must be set (min 32 characters)");
   return s;
 }
 
