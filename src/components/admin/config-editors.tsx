@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Loader2, Plus, Save, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Mail, Plus, Save, Trash2, Upload } from "lucide-react";
 import { Alert, Badge, Button, Card, CardHeader, Checkbox, Field, Input, Select } from "@/components/ui";
-import { createRoleAction, saveEntityAction, saveSettingsAction, saveWorkflowAction, setRolePermissionsAction } from "@/app/actions/admin";
+import { createRoleAction, saveEntityAction, saveSettingsAction, saveWorkflowAction, sendTestEmailAction, setRolePermissionsAction } from "@/app/actions/admin";
 import { STATUS_LABEL } from "@/lib/status";
 
 function useRunner() {
@@ -406,6 +406,30 @@ export function RoleMatrix({ roles, permissions, canEdit }: { roles: { id: strin
 
 // ───────────── System settings ─────────────
 
+function TestEmailButton({ disabled }: { disabled: boolean }) {
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <div className="space-y-2 pt-2">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        disabled={disabled || pending}
+        onClick={() =>
+          start(async () => {
+            const r = await sendTestEmailAction();
+            setMsg(r.ok ? { ok: true, text: r.message ?? "Sent" } : { ok: false, text: r.error });
+          })
+        }
+      >
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />} Send test email to me
+      </Button>
+      {msg && <Alert tone={msg.ok ? "green" : "red"}>{msg.text}</Alert>}
+    </div>
+  );
+}
+
 export function SettingsEditor({ initial, email }: { initial: { appName: string; companyName: string; supportEmail: string; pdfShowComments: boolean; overdueHighlightHours: number }; email: { configured: boolean; host: string | null; from: string | null } }) {
   const { pending, msg, run } = useRunner();
   const [f, setF] = useState(initial);
@@ -448,7 +472,8 @@ export function SettingsEditor({ initial, email }: { initial: { appName: string;
               {email.host} · from {email.from}
             </p>
           )}
-          <p className="text-xs text-slate-500">SMTP credentials are managed through environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM) and are never stored in the database. In-app notifications always work.</p>
+          <p className="text-xs text-slate-500">SMTP credentials are managed through environment variables (SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD, SMTP_FROM) and are never stored in the database. In-app notifications always work.</p>
+          <TestEmailButton disabled={!email.configured} />
         </div>
       </Card>
     </div>

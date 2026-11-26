@@ -124,3 +124,25 @@ What to back up: the PostgreSQL database **and** the `STORAGE_DIR` directory (at
 - **Files**: nightly incremental copy of `STORAGE_DIR` (e.g. `restic`, `rclone`, or Azure/AWS backup) to the same retention.
 - **Restore**: `pg_restore --clean --no-owner -d "$DATABASE_URL" iprams-YYYY-MM-DD.dump`, restore `STORAGE_DIR` from the same date, start the app. Test a restore at least quarterly.
 - Audit and approval tables are append-only by trigger; restoring a dump recreates the triggers.
+
+## Email with Google Workspace
+
+1. Pick the mailbox that sends (for example support@ or a dedicated iprams@ user). It needs
+   2-Step Verification turned on.
+2. Signed in as that mailbox, create an app password at https://myaccount.google.com/apppasswords
+   (name it "IPRAMS"). Copy the 16-character password; spaces don't matter.
+3. In Vercel → Settings → Environment Variables (Production), add:
+
+   | Name | Value |
+   |---|---|
+   | `SMTP_HOST` | `smtp.gmail.com` |
+   | `SMTP_PORT` | `465` |
+   | `SMTP_USER` | the mailbox address |
+   | `SMTP_PASSWORD` | the app password (mark it Sensitive) |
+   | `SMTP_FROM` | `IPRAMS <the mailbox address>` |
+
+4. Redeploy, then use Administration → System settings → **Send test email to me**. If it fails,
+   the message shown is Google's reason (for example a wrong app password).
+
+`SMTP_FROM` must be the mailbox itself or an alias it owns, or Google rewrites the sender.
+Google Workspace allows about 2,000 messages a day per mailbox. Port 465 uses TLS automatically.

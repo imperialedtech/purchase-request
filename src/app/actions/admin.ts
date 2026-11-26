@@ -5,7 +5,9 @@ import { db } from "@/server/db";
 import { requireActor } from "@/server/auth/session";
 import { toActionError, type ActionResult } from "@/server/errors";
 import * as admin from "@/server/services/admin";
-import { sendEmail } from "@/server/email";
+import { emailConfigured, sendEmail } from "@/server/email";
+import { entitiesWith } from "@/server/auth/actor";
+import { rateLimit } from "@/server/auth/rate-limit";
 import { appUrl } from "@/server/env";
 
 function done<T>(data?: T, message?: string): ActionResult<T> {
@@ -138,5 +140,29 @@ export async function saveSettingsAction(input: Partial<admin.SystemSettings>): 
     return done(undefined, "Settings saved");
   } catch (e) {
     return toActionError(e);
+  }
+}
+
+/** Sends a test email to the signed-in administrator so SMTP settings can be checked from the app. */
+export async function sendTestEmailAction(): Promise<ActionResult> {
+  const actor = await requireActor();
+  if (entitiesWith(actor, "admin.settings").length === 0) return { ok: false, error: "You do not have permission to do this" };
+  const rl = await rateLimit(db, `test-email:${actor.id}`, 5, 10 * 60_000);
+  if (!rl.allowed) return { ok: false, error: `Too many test emails. Try again in ${Math.ceil(rl.retryAfterSec / 60)} min.` };
+  if (!emailConfigured()) return { ok: false, error: "Email is not configured. Add the SMTP_* variables in Vercel and redeploy." };
+  try {
+    await sendEmail({
+      to: actor.email,
+      subject: "[IPRAMS] Test email",
+      intro: `Hello ${actor.name}, this is a test from the Purchase Request system. Email notifications are working.`,
+      lines: [["Sent from", process.env.SMTP_FROM ?? ""], ["Mail server", process.env.SMTP_HOST ?? ""]],
+      link: appUrl(),
+    });
+    return { ok: true, message: `Test email sent to ${actor.email}. Check the inbox (and spam folder).` };
+  } catch (e) {
+    // Show the mail server's reason (never the password) so the setup can be corrected.
+    const reason = e instanceof Error ? e.message.replace(process.env.SMTP_PASSWORD || "\u0000", "•••").slice(0, 300) : "Unknown error";
+    console.error("[IPRAMS] test email failed", e);
+    return { ok: false, error: `Sending failed: ${reason}` };
   }
 }
