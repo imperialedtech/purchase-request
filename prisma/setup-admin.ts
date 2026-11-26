@@ -12,7 +12,30 @@ import { issueUserToken } from "../src/server/services/auth";
 import { audit } from "../src/server/services/audit";
 import { appUrl } from "../src/server/env";
 
-const db = new PrismaClient();
+// Accept the connection string under either name and tolerate pasted quotes/whitespace.
+function cleanUrl(v: string | undefined) {
+  return (v ?? "").trim().replace(/^["'`]+|["'`]+$/g, "").trim();
+}
+
+function describeBadUrl(v: string) {
+  if (!v) return "it is empty";
+  if (v.startsWith("<")) return "it is still the <POSTGRES_URL_NON_POOLING> placeholder — replace it with the real value";
+  if (/[•*]{3,}/.test(v)) return "it looks like the masked •••• text — click the eye icon in Vercel to reveal the value first";
+  
+  return `it starts with "${v.slice(0, 6)}…" (${v.length} characters) instead of "postgresql://"`;
+}
+
+const dbUrl = cleanUrl(process.env.POSTGRES_URL_NON_POOLING || process.env.DIRECT_URL || process.env.DATABASE_URL);
+if (!/^postgres(ql)?:\/\//i.test(dbUrl)) {
+  console.error(`\nThe database connection string is not valid: ${describeBadUrl(dbUrl)}.`);
+  console.error(`Copy POSTGRES_URL_NON_POOLING from Vercel (Settings → Environment Variables → click the value to reveal → copy) and run:`);
+  console.error(`  $env:POSTGRES_URL_NON_POOLING="postgresql://..."\n`);
+  process.exit(1);
+}
+process.env.DATABASE_URL = dbUrl;
+process.env.DIRECT_URL = dbUrl;
+const db = new PrismaClient({ datasourceUrl: dbUrl });
+console.log(`Connecting to database host: ${dbUrl.replace(/^.*@/, "").replace(/[/?].*$/, "")}`);
 
 // Prisma silently loads the local .env (with the local SESSION_SECRET). When targeting the
 // Vercel/Supabase database (POSTGRES_PASSWORD given), the key must match the server's, so drop any
