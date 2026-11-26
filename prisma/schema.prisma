@@ -547,3 +547,13 @@ model RateLimit {
   @@index([resetAt])
   @@map("rate_limits")
 }
+
+/// File contents when STORAGE_DRIVER=database (used on Vercel when no object store key is available).
+model StoredObject {
+  key       String   @id
+  data      Bytes
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@map("stored_objects")
+}

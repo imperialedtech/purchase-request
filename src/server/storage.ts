@@ -8,6 +8,7 @@ import { storageDriver, supabaseUrl } from "./env";
 //
 // Drivers (STORAGE_DRIVER):
 //   "local"    — a directory outside the web root (STORAGE_DIR). For a single internal server.
+//   "database" — PostgreSQL table stored_objects (default on Vercel without a Supabase service key).
 //   "supabase" — a PRIVATE Supabase Storage bucket accessed with the service-role key, server-side
 //                only (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_STORAGE_BUCKET). Required on Vercel.
 
@@ -63,10 +64,21 @@ async function ensureBucket() {
   bucketReady = true;
 }
 
+// ───────────── database ─────────────
+
+// Loaded lazily so the local/supabase drivers do not depend on the Prisma client.
+async function dbClient() {
+  return (await import("./db")).db;
+}
+
 // ───────────── API ─────────────
 
 export async function putObject(folder: Folder, data: Buffer) {
   const key = `${folder}/${randomUUID()}`;
+  if (driver() === "database") {
+    await (await dbClient()).storedObject.create({ data: { key, data: new Uint8Array(data), sizeBytes: data.length } });
+    return key;
+  }
   if (driver() === "supabase") {
     await ensureBucket();
     const { url, bucket, headers } = sb();
@@ -85,6 +97,11 @@ export async function putObject(folder: Folder, data: Buffer) {
 }
 
 export async function getObject(key: string): Promise<Buffer> {
+  if (driver() === "database") {
+    const o = await (await dbClient()).storedObject.findUnique({ where: { key: validKey(key) } });
+    if (!o) throw new Error("Stored object not found");
+    return Buffer.from(o.data);
+  }
   if (driver() === "supabase") {
     const { url, bucket, headers } = sb();
     const r = await fetch(`${url}/storage/v1/object/authenticated/${bucket}/${validKey(key)}`, { headers });
@@ -95,6 +112,10 @@ export async function getObject(key: string): Promise<Buffer> {
 }
 
 export async function deleteObject(key: string) {
+  if (driver() === "database") {
+    await (await dbClient()).storedObject.deleteMany({ where: { key: validKey(key) } });
+    return;
+  }
   if (driver() === "supabase") {
     const { url, bucket, headers } = sb();
     await fetch(`${url}/storage/v1/object/${bucket}`, {

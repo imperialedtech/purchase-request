@@ -47,7 +47,23 @@ npm run build && <restart the service>
 Run `npm start` under a process manager (systemd, PM2, NSSM on Windows) behind an HTTPS reverse
 proxy. Set `STORAGE_DIR` to a persistent volume. This setup supports every feature as built.
 
-### Vercel + Supabase (dashboard only)
+### Vercel with a linked Supabase project (no manual variables)
+If the Supabase project is linked to the Vercel project (Supabase → Project Settings → Integrations
+→ Vercel, or Vercel → Storage), Vercel injects `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`,
+`POSTGRES_PASSWORD`, `SUPABASE_URL`, … and the app needs **no** manually entered variables:
+
+| Setting | Source when not set explicitly |
+|---|---|
+| Database (app / migrations) | `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING` |
+| Session key | `SUPABASE_JWT_SECRET`, else derived from `POSTGRES_PASSWORD` (set `SESSION_SECRET` to decouple it) |
+| Public URL | `VERCEL_PROJECT_PRODUCTION_URL` |
+| File storage | Supabase Storage if `SUPABASE_SERVICE_ROLE_KEY` exists, otherwise the `stored_objects` table in PostgreSQL |
+| Upload limit | 4 MB on Vercel |
+
+The `stored_objects_and_api_lockdown` migration enables Row Level Security on every table and revokes
+Supabase's `anon`/`authenticated` privileges, so nothing is reachable through Supabase's public REST API.
+
+### Vercel + Supabase (manual variables)
 The app is Vercel-ready: files go to a **private** Supabase Storage bucket (`STORAGE_DRIVER=supabase`),
 rate limits live in PostgreSQL, and the `vercel-build` script runs `prisma migrate deploy` before
 every build. Functions run in London (`lhr1`, see `vercel.json`), so create Supabase in London too.
