@@ -121,19 +121,14 @@ dialog::backdrop {
 }
 
 /* sign-in illustration */
-@keyframes iet-beacon {
-  0%, 70%, 100% { opacity: 0.25; }
-  80% { opacity: 1; }
-}
 @keyframes iet-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
-.iet-beacon { animation: iet-beacon 3s ease-in-out infinite; }
 .iet-float { animation: iet-float 7s ease-in-out infinite; }
 .iet-float-slow { animation: iet-float 9s ease-in-out infinite reverse; }
 @media (prefers-reduced-motion: reduce) {
-  .iet-beacon, .iet-float, .iet-float-slow { animation: none; }
+  .iet-float, .iet-float-slow { animation: none; }
 }
 
 @media print {

@@ -2,7 +2,6 @@ import Image from "next/image";
 import { Check, Clock } from "lucide-react";
 import { db } from "@/server/db";
 import { getSettings } from "@/server/services/admin";
-import { Skyline } from "@/components/auth/skyline";
 
 /** Illustration of what the system does: a request moving through the three approval levels. */
 function ApprovalCards() {
@@ -50,9 +49,12 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
       <aside className="relative hidden overflow-hidden bg-black lg:block">
-        <Skyline className="absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/30" />
-        <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-black/80 via-black/45 to-transparent" />
+        {/* abstract background: soft red glows over a faint grid */}
+        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_80%_70%_at_60%_45%,black,transparent)]" />
+        <div aria-hidden className="absolute -top-40 -right-32 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(closest-side,rgba(220,38,38,0.35),transparent)] blur-2xl" />
+        <div aria-hidden className="absolute -bottom-48 -left-40 h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(closest-side,rgba(153,27,27,0.4),transparent)] blur-2xl" />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#dc2626]/60 to-transparent" />
+        <div aria-hidden className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
         <div className="relative flex h-full flex-col justify-between p-10">
           <div className="inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm">
             <Image src="/brand/iet-logo-white.png" alt="Imperial EdTech" width={115} height={22} priority className="h-[22px] w-auto" />
@@ -84,8 +86,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       </aside>
 
       <main className="relative flex items-center justify-center overflow-hidden p-6 sm:p-10">
-        {/* small screens: faint skyline behind the form */}
-        <Skyline id="m" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full opacity-40 lg:hidden" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgba(153,27,27,0.22),transparent)] lg:hidden" />
         <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(220,38,38,0.16),transparent)]" />
         <div className="relative w-full max-w-sm">
           <Image src="/brand/iet-logo-white.png" alt="Imperial EdTech" width={140} height={27} priority className="mb-10 h-[27px] w-auto" />
